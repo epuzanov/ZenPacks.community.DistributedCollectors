@@ -14,6 +14,8 @@ import socket
 import cgi
 import time
 import transaction
+import logging
+import fileinput
 
 skinsDir = os.path.join(os.path.dirname(__file__), 'skins')
 from Products.CMFCore.DirectoryView import registerDirectory
@@ -26,10 +28,46 @@ from Products.ZenUtils.Utils \
 from Products.ZenModel.PerformanceConf import performancePath
 from Products.ZenModel.ZVersion import VERSION
 
+log = logging.getLogger('.'.join(['zen', __name__]))
+
+MASTER_DAEMON_LIST_FILE=zenPath('etc/master_daemons.txt')
+#The list of default master daemons on a stock/fresh install
+DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zenhub', 'zenjobs', 'zenactions']
+
 zpDir = zenPath('ZenPacks')
 updConfZenBin = zenPath('bin/updateConfigs')
 updConfBin = os.path.join(os.path.dirname(__file__), 'bin/updateConfigs')
-masterdaemons = ['zeoctl', 'zopectl', 'zenhub', 'zenjobs', 'zenactions']
+
+
+def get_master_daemons():
+    """
+    Retrieve the list of Master Daemons
+    
+    Master Daemons are daemons that should only run on the zenoss master
+    and not on any distributed collectors. There is a set of core
+    daemons provided from Zenoss, in addition users might have their own
+    custom daemons they've written that should be treated as a master 
+    daemon
+    
+    :rtype: List
+    :return: A list of deamon names which should be considered master daemons
+    """
+    log.debug("Gathering list of Master Daemons")
+    #This is the default list
+    daemon_list = DEFAULT_MASTER_DAEMONS
+    
+    #Now check for any customized daemons
+    if os.path.exists(MASTER_DAEMON_LIST_FILE):
+        for line in fileinput.input(MASTER_DAEMON_LIST_FILE):
+            #Start Clean
+            line = line.strip()
+            #Ignore Comment Lines
+            if not line.startswith("#"):
+                #This line should be a daemon name
+                if line not in daemon_list:
+                    daemon_list.append(line)
+    return daemon_list
+masterdaemons = get_master_daemons()
 
 
 class blackhole:
@@ -318,7 +356,6 @@ class ZenPack(ZenPackBase):
         if len(items) > 0: menu.manage_deleteZenMenuItem(tuple(items))
 
     def replaceString(self, path, search, repl):
-        import fileinput
         for line in fileinput.input(path, inplace=1):
             if search != '': newline = line.strip('\n').replace(search, repl) 
             elif fileinput.lineno() == 4: newline = "%s\n%s"(line.strip('\n'), repl)
