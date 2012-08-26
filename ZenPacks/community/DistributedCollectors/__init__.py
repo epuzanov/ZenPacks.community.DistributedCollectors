@@ -32,7 +32,7 @@ log = logging.getLogger('.'.join(['zen', __name__]))
 
 MASTER_DAEMON_LIST_FILE=zenPath('etc/master_daemons.txt')
 #The list of default master daemons on a stock/fresh install
-DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zenhub', 'zenjobs', 'zenactions']
+DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zeneventserver', 'zeneventd', 'zenhub', 'zenjobs', 'zenactions']
 
 zpDir = zenPath('ZenPacks')
 updConfZenBin = zenPath('bin/updateConfigs')

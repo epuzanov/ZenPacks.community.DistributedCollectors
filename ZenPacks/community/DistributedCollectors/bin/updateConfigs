@@ -47,6 +47,15 @@ do
 done
 echo "Update zope.conf"
 sed -i 's/server .*\:/server '$master'\:/g' $ZENHOME/etc/zope.conf
+if [ -f $ZENHOME/etc/zodb_db_main.conf ]
+then
+    sed -i 's/host .*$/host '$master'$/g' $ZENHOME/etc/zodb_db_main.conf
+fi
+if [ -f $ZENHOME/etc/zodb_db_session.conf ]
+then
+    sed -i 's/host .*$/host '$master'$/g' $ZENHOME/etc/zodb_db_session.conf
+fi
+
 if [ $master = "localhost" ]
 then
     rm $ZENHOME/etc/daemons.txt 2>/dev/null
