@@ -32,7 +32,8 @@ log = logging.getLogger('.'.join(['zen', __name__]))
 
 MASTER_DAEMON_LIST_FILE=zenPath('etc/master_daemons.txt')
 #The list of default master daemons on a stock/fresh install
-DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zeneventserver', 'zeneventd', 'zenhub', 'zenjobs', 'zenactions']
+DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zeneventserver', 'zeneventd',
+    'zenhub', 'zenjobs', 'zenactions', 'zenactiond']
 
 zpDir = zenPath('ZenPacks')
 updConfZenBin = zenPath('bin/updateConfigs')
@@ -181,6 +182,8 @@ def manage_addRemoteMonitor(self, id, submon=None, REQUEST=None):
         if daemon['msg'] != 'Up': continue
         if daemon['name'] in masterdaemons: continue 
         daemons.write('%s\n'%daemon['name'])
+        if VERSION < '4.0': continue
+        daemons.write('zenrrdcached\n')
     daemons.close()
     setupRemoteMonitors([id,], self.commandTestOutput(), REQUEST, install=True)
     os.unlink('%s/daemons.txt'%zpDir)
@@ -201,6 +204,8 @@ def manage_updateRemoteMonitors(self, ids=None, submon="", REQUEST=None):
         if daemon['msg'] != 'Up': continue
         if daemon['name'] in masterdaemons: continue 
         daemons.write('%s\n'%daemon['name'])
+        if VERSION < '4.0': continue
+        daemons.write('zenrrdcached\n')
     daemons.close()
     setupRemoteMonitors(ids, self.commandTestOutput(), REQUEST, install=True, remove=True)
     os.unlink('%s/daemons.txt'%zpDir)
