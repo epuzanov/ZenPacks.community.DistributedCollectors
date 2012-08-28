@@ -43,20 +43,20 @@ updConfBin = os.path.join(os.path.dirname(__file__), 'bin/updateConfigs')
 def get_master_daemons():
     """
     Retrieve the list of Master Daemons
-    
+
     Master Daemons are daemons that should only run on the zenoss master
     and not on any distributed collectors. There is a set of core
     daemons provided from Zenoss, in addition users might have their own
     custom daemons they've written that should be treated as a master 
     daemon
-    
+
     :rtype: List
     :return: A list of deamon names which should be considered master daemons
     """
     log.debug("Gathering list of Master Daemons")
     #This is the default list
     daemon_list = DEFAULT_MASTER_DAEMONS
-    
+
     #Now check for any customized daemons
     if os.path.exists(MASTER_DAEMON_LIST_FILE):
         for line in fileinput.input(MASTER_DAEMON_LIST_FILE):
@@ -182,7 +182,7 @@ def manage_addRemoteMonitor(self, id, submon=None, REQUEST=None):
         if daemon['msg'] != 'Up': continue
         if daemon['name'] in masterdaemons: continue 
         daemons.write('%s\n'%daemon['name'])
-        if VERSION < '4.0': continue
+    if VERSION >= '4.0':
         daemons.write('zenrrdcached\n')
     daemons.close()
     setupRemoteMonitors([id,], self.commandTestOutput(), REQUEST, install=True)
@@ -204,7 +204,7 @@ def manage_updateRemoteMonitors(self, ids=None, submon="", REQUEST=None):
         if daemon['msg'] != 'Up': continue
         if daemon['name'] in masterdaemons: continue 
         daemons.write('%s\n'%daemon['name'])
-        if VERSION < '4.0': continue
+    if VERSION >= '4.0':
         daemons.write('zenrrdcached\n')
     daemons.close()
     setupRemoteMonitors(ids, self.commandTestOutput(), REQUEST, install=True, remove=True)
