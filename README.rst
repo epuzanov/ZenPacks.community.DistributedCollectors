@@ -51,6 +51,7 @@ than run **ssh-keygen** as **zenoss** user.
 on Zenoss master server run as **zenoss** user:
 
     ::
+
         ssh-keygen -t rsa
         cat ~/.ssh/id_rsa.pub | ssh zenoss@remote_collector_name "cat - >> ~/.ssh/authorized_keys"
 
