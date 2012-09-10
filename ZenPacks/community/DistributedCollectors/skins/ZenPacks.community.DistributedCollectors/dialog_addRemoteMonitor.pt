@@ -9,7 +9,28 @@
 <br/>
 </p>
 <div id="dialog_buttons">
-<input tal:attributes="id string:dialog_submit;
+<input  tal:condition="python:here.dmd.versionId()>='300'"
+        tal:attributes="id string:dialog_ok;
+                        type string:button;
+                        value string:OK;"
+        onclick="var uids = [escape($('new_id').value)];
+var addCollectorLog = new Zenoss.CommandWindow({
+    data: {
+        uids: uids,
+        command: 'add'
+    },
+    listeners: {
+        close: function(panel) {
+            window.top.location.reload();
+        }
+    },
+    target: '/zport/dmd/Monitors/run_updateRemoteCollector',
+    title: _t('Add Remote Collector')
+});
+$('dialog').hide();
+addCollectorLog.show();"/>
+<input tal:condition="python:here.dmd.versionId()<'300'"
+    tal:attributes="id string:dialog_submit;
         type string:submit;
         value string:OK;
         onclick string:return $$('dialog').submit_form_and_check(

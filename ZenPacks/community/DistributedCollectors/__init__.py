@@ -12,10 +12,45 @@ import Globals
 import os
 import socket
 import cgi
-import time
 import transaction
 import logging
 import fileinput
+from time import strftime
+try:
+    from Products.ZenUI3.browser.streaming import StreamingView
+    from Products.ZenUtils.jsonutils import unjson, json
+except ImportError:
+    from Products.ZenUtils.json import unjson, json
+    class StreamingView:
+        def __init__(self, context, request):
+            self.context = context
+            self.request = request
+            self.out = request.RESPONSE
+
+        def __call__(self):
+            header,footer=self.context.commandTestOutput().split('OUTPUT_TOKEN')
+            self.out.write(str(header))
+            self.stream()
+            self.out.write(str(footer))
+
+        def stream(self):
+            return
+
+        def write(self, data=''):
+            ''' Output (maybe partial) result text.
+            '''
+            startLine = '<tr><td class="tablevalues">'
+            endLine = '</td></tr>\n'
+            if self.out:
+                if not isinstance(data, list):
+                    data = [data]
+                for l in data:
+                    if not isinstance(l, str):
+                        l = str(l)
+                    l = l.strip()
+                    l = cgi.escape(l)
+                    l = l.replace('\n', endLine + startLine)
+                    self.out.write(startLine + l + endLine)
 
 skinsDir = os.path.join(os.path.dirname(__file__), 'skins')
 from Products.CMFCore.DirectoryView import registerDirectory
@@ -26,102 +61,79 @@ from Products.ZenWidgets import messaging
 from Products.ZenUtils.Utils \
     import monkeypatch, zenPath, binPath, executeCommand, executeStreamCommand
 from Products.ZenModel.PerformanceConf import performancePath
-from Products.ZenModel.ZVersion import VERSION
 
 log = logging.getLogger('.'.join(['zen', __name__]))
 
+COMMAND_TIMEOUT=240
+
 MASTER_DAEMON_LIST_FILE=zenPath('etc/master_daemons.txt')
-#The list of default master daemons on a stock/fresh install
-DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zeneventserver', 'zeneventd',
-    'zenhub', 'zenjobs', 'zenactions', 'zenactiond']
+
+DEFAULT_MASTER_DAEMONS=['zeoctl', 'zopectl', 'zeneventd', 'zenhub', 'zenjobs',
+                        'zenactions', 'zenactiond']
 
 zpDir = zenPath('ZenPacks')
 updConfZenBin = zenPath('bin/updateConfigs')
 updConfBin = os.path.join(os.path.dirname(__file__), 'bin/updateConfigs')
 
+class UpdateRemoteCollectorView(StreamingView):
+    def write(self, data=''):
+        StreamingView.write(self, ' '.join((strftime('%Y-%m-%d %H:%M:%S,000'),
+        'INFO', 'zen.updateCollector:', data)))
 
-def get_master_daemons():
-    """
-    Retrieve the list of Master Daemons
-
-    Master Daemons are daemons that should only run on the zenoss master
-    and not on any distributed collectors. There is a set of core
-    daemons provided from Zenoss, in addition users might have their own
-    custom daemons they've written that should be treated as a master 
-    daemon
-
-    :rtype: List
-    :return: A list of deamon names which should be considered master daemons
-    """
-    log.debug("Gathering list of Master Daemons")
-    #This is the default list
-    daemon_list = DEFAULT_MASTER_DAEMONS
-
-    #Now check for any customized daemons
-    if os.path.exists(MASTER_DAEMON_LIST_FILE):
-        for line in fileinput.input(MASTER_DAEMON_LIST_FILE):
-            #Start Clean
-            line = line.strip()
-            #Ignore Comment Lines
-            if not line.startswith("#"):
-                #This line should be a daemon name
-                if line not in daemon_list:
-                    daemon_list.append(line)
-    return daemon_list
-masterdaemons = get_master_daemons()
-
-
-class blackhole:
-    def write(self, text=None):
-        return
-
-def setupRemoteMonitors(ids, templ, REQUEST=None, install=None, remove=None):
-    if REQUEST and VERSION < '2.6':
-        out = REQUEST.RESPONSE
-    else: out = blackhole()
-    def write(lines):
-        ''' Output (maybe partial) result text.
-        '''
-        startLine = '<tr><td class="tablevalues">'
-        endLine = '</td></tr>\n'
-        if out:
-            if not isinstance(lines, list):
-                lines = [lines]
-            for l in lines:
-                if not isinstance(l, str):
-                    l = str(l)
-                l = l.strip()
-                l = cgi.escape(l)
-                l = l.replace('\n', endLine + startLine)
-                out.write(startLine + l + endLine)
-
-    header, footer = templ.split('OUTPUT_TOKEN')
-    out.write(str(header))
-    for id in ids:
-        write('Remote Collector %s'%id)
-        write('Stopping zenoss daemons')
-        executeStreamCommand('ssh %s "zenoss stop"'%id, write, timeout=240)
-        if remove:
-            write('Revert Remote Collector configuration')
-            executeStreamCommand('ssh %s %s localhost localhost'%(id,
-                                            updConfZenBin), write, timeout=240)
-        write('Remove ZenPacks files from Remote Collector')
-        executeStreamCommand('ssh %s rm -fr %s'%(id, zpDir), write, timeout=240)
-        if install:
-            write('Copy ZenPacks files to Remote Collector')
-#  Copy ZenPacks files with scp
-#            executeStreamCommand('scp -r %s %s:%s'%(zpDir, id, zpDir), write,
-#                                                                timeout=240)
-#  Copy ZenPacks files with cpio compression
-            executeStreamCommand('find %s -print | cpio -oc | ssh -C %s "cd / && cpio -ic 2>/dev/null"'%(
-                                            zpDir, id), write, timeout=240)
-            write('Update Remote Collector configuration')
-            executeStreamCommand('ssh %s %s %s %s'%(id, updConfBin,
-                                    socket.getfqdn(), id), write, timeout=240)
-        write('Starting zenoss daemons')
-        executeStreamCommand('ssh %s "zenoss start"'%id, write, timeout=240)
-        write('Finish')
-    out.write(str(footer))
+    def stream(self):
+        daemons=[d['name'] for d in self.context.dmd.About.getZenossDaemonStates() \
+                if d['msg'] == 'Up' and d['name'] not in DEFAULT_MASTER_DAEMONS]
+        if 'zeneventserver' in daemons:
+            daemons.remove('zeneventserver') 
+            if 'zenrrdcached' not in daemons:
+                daemons.append('zenrrdcached') 
+        if os.path.exists(MASTER_DAEMON_LIST_FILE):
+            for line in fileinput.input(MASTER_DAEMON_LIST_FILE):
+                line = line.strip()
+                if line in daemons:
+                    daemons.remove(line)
+        df = open('%s/daemons.txt'%zpDir, 'w')
+        df.write('%s\n'%'\n'.join(daemons))
+        df.close()
+        data = unjson(self.request.get('data'))
+        ids = data['uids']
+        if not ids:
+            self.write('No Remote Collectors were selected')
+        command = data['command']
+        if command == 'add':
+            new_id = ids[0]
+            self.context.manage_addMonitor(new_id, submon='Performance')
+            self.context.Performance[new_id].renderurl = 'http://%s:8090/%s'%(
+                                                    socket.getfqdn(), new_id)
+#            self.context.Performance[new_id].renderurl='http://%s:8091' % new_id
+            transaction.commit()
+        for id in ids:
+            self.write('%s Remote Collector %s'%(command.capitalize(), id))
+            self.write('Stopping zenoss daemons')
+            executeStreamCommand('ssh %s "zenoss stop"'%id,
+                                        self.write, timeout=COMMAND_TIMEOUT)
+            if command in ('update', 'remove'):
+                self.write('Revert Remote Collector configuration')
+                executeStreamCommand('ssh %s %s localhost localhost'%(id,
+                            updConfZenBin), self.write, timeout=COMMAND_TIMEOUT)
+            self.write('Remove ZenPacks files from Remote Collector')
+            executeStreamCommand('ssh %s rm -fr %s'%(id, zpDir),
+                                            self.write, timeout=COMMAND_TIMEOUT)
+            if command in ('add', 'update'):
+                self.write('Copy ZenPacks files to Remote Collector')
+                executeStreamCommand('find %s -print | cpio -oc | ssh -C %s "cd / && cpio -ic 2>/dev/null"'%(
+                                zpDir, id), self.write, timeout=COMMAND_TIMEOUT)
+                self.write('Update Remote Collector configuration')
+                executeStreamCommand('ssh %s %s %s %s'%(id, updConfBin,
+                    socket.getfqdn(), id), self.write, timeout=COMMAND_TIMEOUT)
+            self.write('Starting zenoss daemons')
+            executeStreamCommand('ssh %s "zenoss start"'%id,
+                    self.write, timeout=COMMAND_TIMEOUT)
+        if command == 'remove':
+            self.context.manage_removeMonitor(ids=ids, submon='Performance')
+            transaction.commit()
+        self.write('All Tasks Finished')
+        os.unlink('%s/daemons.txt'%zpDir)
 
 
 @monkeypatch('Products.ZenModel.Device.Device')
@@ -173,22 +185,11 @@ def setPerformanceMonitor(self, performanceMonitor,
         return self.callZenScreen(REQUEST)
 
 @monkeypatch('Products.ZenModel.MonitorClass.MonitorClass')
-def manage_addRemoteMonitor(self, id, submon=None, REQUEST=None):
+def manage_addRemoteMonitor(self, id=None, submon=None, REQUEST=None):
     'Add an object of sub_class, from a module of the same name'
-    self.manage_addMonitor(id, submon, None)
-    transaction.commit()
-    daemons = open('%s/daemons.txt'%zpDir, 'w')
-    for daemon in self.dmd.About.getZenossDaemonStates():
-        if daemon['msg'] != 'Up': continue
-        if daemon['name'] in masterdaemons: continue 
-        daemons.write('%s\n'%daemon['name'])
-    if VERSION >= '4.0':
-        daemons.write('zenrrdcached\n')
-    daemons.close()
-    setupRemoteMonitors([id,], self.commandTestOutput(), REQUEST, install=True)
-    os.unlink('%s/daemons.txt'%zpDir)
-    self.dmd.Monitors.Performance[id].renderurl='http://%s:8091' % id
     if REQUEST:
+        REQUEST['data'] = json({'uids':[id], 'command':'add'})
+        UpdateRemoteCollectorView(self, REQUEST)()
         messaging.IMessageSender(self).sendToBrowser(
             'Remote Collector Created',
             'Remote collector %s was created.' % id
@@ -199,30 +200,21 @@ def manage_addRemoteMonitor(self, id, submon=None, REQUEST=None):
 @monkeypatch('Products.ZenModel.MonitorClass.MonitorClass')
 def manage_updateRemoteMonitors(self, ids=None, submon="", REQUEST=None):
     'Update an object from this one'
-    daemons = open('%s/daemons.txt'%zpDir, 'w')
-    for daemon in self.dmd.About.getZenossDaemonStates():
-        if daemon['msg'] != 'Up': continue
-        if daemon['name'] in masterdaemons: continue 
-        daemons.write('%s\n'%daemon['name'])
-    if VERSION >= '4.0':
-        daemons.write('zenrrdcached\n')
-    daemons.close()
-    setupRemoteMonitors(ids, self.commandTestOutput(), REQUEST, install=True, remove=True)
-    os.unlink('%s/daemons.txt'%zpDir)
     if REQUEST:
+        REQUEST['data'] = json({'uids':ids, 'command':'update'})
+        UpdateRemoteCollectorView(self, REQUEST)()
         messaging.IMessageSender(self).sendToBrowser(
             'Remote Collectors Updated',
-            'Updated remote collectors: %s' % (', '.join(ids))
+            'Updated remote collectors: %s' % (', '.join(uids))
         )
         return self.callZenScreen(REQUEST)
 
 @monkeypatch('Products.ZenModel.MonitorClass.MonitorClass')
 def manage_removeRemoteMonitors(self, ids=None, submon="", REQUEST=None):
     'Remove an object from this one'
-    self.manage_removeMonitor(ids, submon, None)
-    transaction.commit()
-    setupRemoteMonitors(ids, self.commandTestOutput(), REQUEST, remove=True)
     if REQUEST:
+        REQUEST['data'] = json({'uids':ids, 'command':'remove'})
+        UpdateRemoteCollectorView(self, REQUEST)()
         messaging.IMessageSender(self).sendToBrowser(
             'Remote Collectors Deleted',
             'Deleted remote collectors: %s' % (', '.join(ids))

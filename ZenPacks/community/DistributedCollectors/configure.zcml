@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configure xmlns="http://namespaces.zope.org/zope"
+           xmlns:browser="http://namespaces.zope.org/browser"
+           xmlns:zcml="http://namespaces.zope.org/zcml">
+
+    <configure zcml:condition="installed Products.Zuul">
+
+        <include package="zenoss.extjs"/>
+
+        <browser:page
+            class=".UpdateRemoteCollectorView"
+            name="run_updateRemoteCollector"
+            for="Products.ZenModel.MonitorClass.MonitorClass"
+            permission="zenoss.ManageDMD"
+            />
+
+    </configure>
+</configure>
