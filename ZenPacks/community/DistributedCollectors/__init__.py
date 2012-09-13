@@ -77,8 +77,8 @@ updConfBin = os.path.join(os.path.dirname(__file__), 'bin/updateConfigs')
 
 class UpdateRemoteCollectorView(StreamingView):
     def write(self, data=''):
-        StreamingView.write(self, ' '.join((strftime('%Y-%m-%d %H:%M:%S,000'),
-        'INFO', 'zen.updateCollector:', data)))
+        StreamingView.write(self, '  '.join((strftime('%Y-%m-%d %H:%M:%S,000'),
+            'INFO', 'zen.updateCollector:', data)))
 
     def stream(self):
         daemons=[d['name'] for d in self.context.dmd.About.getZenossDaemonStates() \
@@ -103,9 +103,9 @@ class UpdateRemoteCollectorView(StreamingView):
         if command == 'add':
             new_id = ids[0]
             self.context.manage_addMonitor(new_id, submon='Performance')
-            self.context.Performance[new_id].renderurl = 'http://%s:8090/%s'%(
-                                                    socket.getfqdn(), new_id)
-#            self.context.Performance[new_id].renderurl='http://%s:8091' % new_id
+#            self.context.Performance[new_id].renderurl = 'http://%s:8090/%s'%(
+#                                                    socket.getfqdn(), new_id)
+            self.context.Performance[new_id].renderurl='http://%s:8091' % new_id
             transaction.commit()
         for id in ids:
             self.write('%s Remote Collector %s'%(command.capitalize(), id))
