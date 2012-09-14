@@ -205,7 +205,7 @@ def manage_updateRemoteMonitors(self, ids=None, submon="", REQUEST=None):
         UpdateRemoteCollectorView(self, REQUEST)()
         messaging.IMessageSender(self).sendToBrowser(
             'Remote Collectors Updated',
-            'Updated remote collectors: %s' % (', '.join(uids))
+            'Updated remote collectors: %s' % (', '.join(ids))
         )
         return self.callZenScreen(REQUEST)
 
