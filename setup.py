@@ -5,7 +5,7 @@
 NAME = 'ZenPacks.community.DistributedCollectors'
 VERSION = '2.0.1'
 AUTHOR = 'Egor Puzanov'
-LICENSE = ''
+LICENSE = 'GPLv2'
 NAMESPACE_PACKAGES = ['ZenPacks', 'ZenPacks.community']
 PACKAGES = ['ZenPacks', 'ZenPacks.community', 'ZenPacks.community.DistributedCollectors']
 INSTALL_REQUIRES = []
