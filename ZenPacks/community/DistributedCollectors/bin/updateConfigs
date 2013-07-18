@@ -50,12 +50,12 @@ sed -i 's/server .*\:/server '$master'\:/g' $ZENHOME/etc/zope.conf
 if [ -f $ZENHOME/etc/zodb_db_main.conf ]
 then
     echo "Update zodb_db_main.conf"
-    sed -i 's/host .*$/host '$master'$/g' $ZENHOME/etc/zodb_db_main.conf
+    sed -i 's/host .*$/host '$master'/g' $ZENHOME/etc/zodb_db_main.conf
 fi
 if [ -f $ZENHOME/etc/zodb_db_session.conf ]
 then
     echo "Update zodb_db_session.conf"
-    sed -i 's/host .*$/host '$master'$/g' $ZENHOME/etc/zodb_db_session.conf
+    sed -i 's/host .*$/host '$master'/g' $ZENHOME/etc/zodb_db_session.conf
 fi
 
 if [ $master = "localhost" ]

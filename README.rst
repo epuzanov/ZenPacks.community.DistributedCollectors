@@ -31,7 +31,7 @@ user.
 
     ::
 
-        zenpack --install ZenPacks.community.DistributedCollectors-2.0.egg
+        zenpack --install ZenPacks.community.DistributedCollectors-2.0.1.egg
         zenoss restart
 
 Note that Developer Installation (with --link option) of ZenPacks not supported.
