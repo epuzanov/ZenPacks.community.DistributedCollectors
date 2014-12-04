@@ -85,8 +85,10 @@ class UpdateRemoteCollectorView(StreamingView):
                 if d['msg'] == 'Up' and d['name'] not in DEFAULT_MASTER_DAEMONS]
         if 'zeneventserver' in daemons:
             daemons.remove('zeneventserver') 
-            if 'zenrrdcached' not in daemons:
-                daemons.append('zenrrdcached') 
+        if 'zenrrdcached' not in daemons:
+            daemons.append('zenrrdcached')
+        if 'zenrender' not in daemons:
+            daemons.append('zenrender')
         if os.path.exists(MASTER_DAEMON_LIST_FILE):
             for line in fileinput.input(MASTER_DAEMON_LIST_FILE):
                 line = line.strip()
