@@ -107,7 +107,7 @@ On the remote collector add port 8091:tcp
 
         lokkit -v --port=8091:tcp #Zenoss graph RRD render
 
-On the main zenoss hub then ass the following ports:
+On the main zenoss hub then add the following ports:
 
     ::
         
