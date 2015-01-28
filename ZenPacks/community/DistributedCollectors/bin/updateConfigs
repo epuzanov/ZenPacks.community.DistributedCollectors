@@ -27,15 +27,16 @@ fi
 cat $ZENHOME/etc/daemons.txt | while read f
 do
     echo "Update $f configuration"
+    if [ $f == "zredis" ]; then
+        continue
+    fi
     if [ -f $ZENHOME/etc/$f.conf ]
     then
         sed -i '/^monitor .*$/d' $ZENHOME/etc/$f.conf
         sed -i '/^hubhost .*$/d' $ZENHOME/etc/$f.conf
     fi
-    if [ $f != "zredis" ]; then
-        echo "monitor         $collector" >> $ZENHOME/etc/$f.conf
-        echo "hubhost         $master" >> $ZENHOME/etc/$f.conf
-    fi
+    echo "monitor         $collector" >> $ZENHOME/etc/$f.conf
+    echo "hubhost         $master" >> $ZENHOME/etc/$f.conf
     if [ ! -f $ZENHOME/bin/$f ]
     then
         if [ -L $ZENHOME/bin/$f -a $master = "localhost" ]
