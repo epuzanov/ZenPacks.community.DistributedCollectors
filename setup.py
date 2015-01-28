@@ -3,7 +3,7 @@
 # or saved.  Do not modify them directly here.
 # NB: PACKAGES is deprecated
 NAME = 'ZenPacks.community.DistributedCollectors'
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 AUTHOR = 'Egor Puzanov'
 LICENSE = 'GPLv2'
 NAMESPACE_PACKAGES = ['ZenPacks', 'ZenPacks.community']
