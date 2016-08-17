@@ -245,7 +245,7 @@ def _executeZenModelerCommand(self, zenmodelerOpts, *args):
         background, REQUEST, write = args
         if background:
 #            log.info('queued job: %s', " ".join(zenmodelerCmd))
-            result = self.dmd.JobManager.addJob(ShellCommandJob,zenmodelerCmd)
+            result = self.dmd.JobManager.addJob(SubprocessJob,zenmodelerCmd)
         else: result = executeCommand(zenmodelerCmd, REQUEST, write)
     else:
         result = executeCommand(zenmodelerCmd, args[0])
@@ -275,7 +275,7 @@ def _executeZenDiscCommand(self, deviceName, devicePath= "/Discovered",
                                              performanceMonitor, REQUEST)
     if background:
 #        log.info('queued job: %s', " ".join(zendiscCmd))
-        result = self.dmd.JobManager.addJob(ShellCommandJob,
+        result = self.dmd.JobManager.addJob(SubprocessJob,
                                                 zendiscCmd)
     else:
         result = executeCommand(zendiscCmd, REQUEST)
